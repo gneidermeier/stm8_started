@@ -7,11 +7,10 @@ STLINK = stlink # stlinkv2
 SDCC         =sdcc
 
 # Add process specific arguments here
-CFLAGS       =-lstm8
-CFLAGS      +=-mstm8
-CFLAGS      +=--opt-code-size
-CFLAGS      +=--std-sdcc99
-CFLAGS      +=--nogcse
+CFLAGS       = -mstm8
+#CFLAGS      +=--opt-code-size
+#CFLAGS      +=--std-sdcc99
+#CFLAGS      +=--nogcse
 #CFLAGS      +=--vc --debug
 
 CFLAGS       = -mstm8 --all-callee-saves --debug --verbose --stack-auto --fverbose-asm  --float-reent --no-peep
@@ -22,12 +21,13 @@ CFLAGS       = -mstm8 --all-callee-saves --debug --verbose --stack-auto --fverbo
 #CFLAGS      +=--fverbose-asm
 #CFLAGS      +=--float-reent
 #CFLAGS      +=--no-peep
-LDFLAGS       = -mstm8 --out-fmt-ihx
+LDFLAGS       = -mstm8 
 
-SOURCE       =main
-SOURCE_DIR   =.
-OUTPUT_DIR   =$(SOURCE_DIR)/build
-StdPeriph    =$(SOURCE_DIR)/STM8S_StdPeriph_Driver
+SOURCE       = main
+SOURCE_DIR   = .
+OUTPUT_DIR   = $(SOURCE_DIR)/build
+#OUTPUT_DIR   = .
+StdPeriph    = $(SOURCE_DIR)/STM8S_StdPeriph_Driver
 
 # Add include paths here
 INCLUDEPATH  =-I$(SOURCE_DIR)/
@@ -38,7 +38,7 @@ def: compile flash
 all: clean compile_obj compile
 
 compile:
-	$(SDCC)    $(LDFLAGS)  -o $(OUTPUT_DIR)/ $(OUTPUT_DIR)/$(SOURCE).rel  $(OUTPUT_DIR)/stm8s_gpio.rel
+	$(SDCC)    $(LDFLAGS) --out-fmt-ihx  -o $(OUTPUT_DIR)/ $(OUTPUT_DIR)/$(SOURCE).rel  $(OUTPUT_DIR)/stm8s_gpio.rel
 #	$(OUTPUT_DIR)/stm8s_clk.rel \
 #	$(OUTPUT_DIR)/stm8s_tim2.rel \
 #	--out-fmt-elf --all-callee-saves --debug --verbose --stack-auto --fverbose-asm  --float-reent --no-peep
@@ -51,10 +51,17 @@ compile_obj:
 #	$(SDCC) $(CFLAGS) $(INCLUDEPATH) -D $(DEVICE) -o $(OUTPUT_DIR)/ -c $(StdPeriph)/src/stm8s_tim2.c
 
 clean:
-	rm -Rrf $(OUTPUT_DIR)
-
+	rm -f $(OUTPUT_DIR)/*.rel  $(OUTPUT_DIR)/*.lst $(OUTPUT_DIR)/*.sym $(OUTPUT_DIR)/*.rst $(OUTPUT_DIR)/*.asm
+	rm -f $(OUTPUT_DIR)/*.map  $(OUTPUT_DIR)/*.elf $(OUTPUT_DIR)/*.ihx $(OUTPUT_DIR)/*.lk $(OUTPUT_DIR)/*.adb
+	
 flash:
 	stm8flash -c $(STLINK) -p $(MCU) -w $(OUTPUT_DIR)/$(SOURCE).ihx
 
+# make stlink work ... see https://github.com/hbendalibraham/stm8_started/issues/1
 openocd:
-	openocd -f interface/stlink.cfg -f target/stm8s105.cfg -c "init" -c "reset halt"
+	openocd -f interface/stlink-dap.cfg -f target/stm8s105.cfg -c "init" -c "reset halt"
+
+gdb:
+	$(SDCC) $(LDFLAGS) --out-fmt-elf  -o $(OUTPUT_DIR)/stm8debug.elf $(OUTPUT_DIR)/$(SOURCE).rel  $(OUTPUT_DIR)/stm8s_gpio.rel
+	stm8-gdb $(OUTPUT_DIR)/stm8debug.elf --tui
+	
